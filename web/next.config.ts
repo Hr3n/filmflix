@@ -9,9 +9,8 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            // media-src * allows videos from any scraped domain to play,
-            // but scripts are strictly limited to your own app.
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src * blob:; font-src 'self' data:; connect-src 'self';"
+            // Allow external iframes, media streams, and images
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src * blob:; frame-src * blob: data:; child-src * blob: data:; font-src 'self' data:; connect-src 'self' https:;"
           },
           {
             key: 'X-Content-Type-Options',
