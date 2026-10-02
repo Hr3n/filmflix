@@ -1,0 +1,38 @@
+[
+    {
+        "title": "Night of the Living Dead",
+        "source_url": "https://archive.org/details/night_of_the_living_dead",
+        "extracted_links": [
+            "https://archive.org/download/night_of_the_living_dead/night_of_the_living_dead_512kb.mp4"
+        ],
+        "genre": "Horror",
+        "year": 1968
+    },
+    {
+        "title": "His Girl Friday",
+        "source_url": "https://archive.org/details/his_girl_friday",
+        "extracted_links": [
+            "https://archive.org/download/his_girl_friday/his_girl_friday_512kb.mp4"
+        ],
+        "genre": "Comedy",
+        "year": 1940
+    },
+    {
+        "title": "Plan 9 from Outer Space",
+        "source_url": "https://archive.org/details/Plan_9_from_Outer_Space_1959",
+        "extracted_links": [
+            "https://archive.org/download/Plan_9_from_Outer_Space_1959/Plan_9_from_Outer_Space_1959_512kb.mp4"
+        ],
+        "genre": "Sci-Fi",
+        "year": 1959
+    },
+    {
+        "title": "House on Haunted Hill",
+        "source_url": "https://archive.org/details/house_on_haunted_hill_720p",
+        "extracted_links": [
+            "https://archive.org/download/house_on_haunted_hill_720p/house_on_haunted_hill_720p.mp4"
+        ],
+        "genre": "Horror",
+        "year": 1959
+    }
+]
