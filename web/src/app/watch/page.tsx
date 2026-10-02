@@ -2,7 +2,7 @@
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense, useEffect, useState, useMemo } from "react";
-import { INITIAL_SERVERS, StreamServer, IdPreference, buildEmbedUrl } from "@/config/player";
+import { INITIAL_SERVERS, StreamServer, IdPreference, buildEmbedUrl, resolveServerTemplate } from "@/config/player";
 
 interface SeasonInfo {
   season_number: number;
@@ -113,7 +113,9 @@ function VideoPlayer() {
         if (data) {
           setMovieMeta(data);
           const activeServer = servers.find((s) => s.id === activeServerId);
-          if (data.extracted_links?.[0] && (!activeServer || !activeServer.endpointTemplate)) {
+          const isTv = data.media_type === "tv" || mediaTypeParam === "tv" || (data.seasons && data.seasons.length > 0);
+          const activeTemplate = activeServer ? resolveServerTemplate(activeServer, isTv) : "";
+          if (data.extracted_links?.[0] && !activeTemplate) {
             setPlayerMode("direct");
           }
         }
@@ -137,8 +139,10 @@ function VideoPlayer() {
   const episodeCount = currentSeasonData?.episode_count || (isTvShow ? 24 : 1);
 
   const activeServer = servers.find((s) => s.id === activeServerId) || servers[0];
-  const embedUrl = activeServer
-    ? buildEmbedUrl(activeServer.endpointTemplate, {
+  const activeTemplate = resolveServerTemplate(activeServer, Boolean(isTvShow));
+
+  const embedUrl = activeTemplate
+    ? buildEmbedUrl(activeTemplate, {
         id: rawId || activeImdbId || (activeTmdbId ? String(activeTmdbId) : null),
         imdb_id: activeImdbId,
         tmdb_id: activeTmdbId,
@@ -173,11 +177,13 @@ function VideoPlayer() {
             <h1 className="font-bold text-base md:text-lg truncate text-white">
               {activeTitle}
             </h1>
-            {isTvShow && (
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
-                S{selectedSeason}:E{selectedEpisode}
-              </span>
-            )}
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+              isTvShow
+                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+            }`}>
+              {isTvShow ? `Series S${selectedSeason}:E${selectedEpisode}` : "Movie"}
+            </span>
           </div>
         </div>
 
@@ -196,7 +202,7 @@ function VideoPlayer() {
             <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            <span className="hidden sm:inline">{blockPopups ? "Popup Shield: ON" : "Shield: OFF"}</span>
+            <span className="hidden sm:inline">{blockPopups ? "Shield: ON" : "Shield: OFF"}</span>
           </button>
 
           <button
@@ -221,10 +227,10 @@ function VideoPlayer() {
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                  Multi-Provider Server Templates & Protections
+                  Movie & Series Endpoint Templates
                 </h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Supported tokens: <code className="text-indigo-400">&#123;id&#125;</code> (IMDb or TMDb), <code className="text-indigo-400">&#123;imdb&#125;</code>, <code className="text-indigo-400">&#123;tmdb&#125;</code>, <code className="text-indigo-400">&#123;season&#125;</code>, <code className="text-indigo-400">&#123;episode&#125;</code>.
+                  The player automatically detects whether a title is a <strong>Movie</strong> or <strong>TV Series</strong> and picks the matching endpoint template.
                 </p>
               </div>
               <button
@@ -254,7 +260,7 @@ function VideoPlayer() {
                   </span>
                 </div>
                 <p className="text-[11px] text-zinc-400 max-w-xl">
-                  Applies HTML5 sandboxing to strictly block new tab popups, background pop-unders, and URL redirects when interacting with the video player. Turn OFF if a specific server fails to initialize.
+                  Applies HTML5 sandboxing to strictly block new tab popups and redirects. Turn OFF if a specific video server requires full popup permissions.
                 </p>
               </div>
 
@@ -272,8 +278,9 @@ function VideoPlayer() {
 
             {/* Server Templates */}
             <div className="space-y-4">
-              {servers.map((server, idx) => {
-                const previewUrl = buildEmbedUrl(server.endpointTemplate, {
+              {servers.map((server) => {
+                const currentTemplate = resolveServerTemplate(server, Boolean(isTvShow));
+                const previewUrl = buildEmbedUrl(currentTemplate, {
                   id: rawId || activeImdbId || (activeTmdbId ? String(activeTmdbId) : null),
                   imdb_id: activeImdbId,
                   tmdb_id: activeTmdbId,
@@ -283,59 +290,84 @@ function VideoPlayer() {
                 });
 
                 return (
-                  <div key={server.id} className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-2">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                      <span className="w-20 text-xs font-bold text-zinc-200 shrink-0">
-                        {server.name}:
-                      </span>
-                      <input
-                        type="text"
-                        placeholder={`https://provider-${idx + 1}.example.com/embed/{id}?autoPlay=true`}
-                        value={server.endpointTemplate}
-                        onChange={(e) => handleUpdateServer(server.id, { endpointTemplate: e.target.value })}
-                        className="flex-1 w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-3.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500 font-mono"
-                      />
+                  <div key={server.id} className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-white">
+                          {server.name}
+                        </span>
 
-                      {/* ID Preference Selector for {id} */}
-                      <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded-xl border border-zinc-800 text-[10px] shrink-0">
-                        <span className="text-zinc-500 px-1 font-medium">&#123;id&#125;:</span>
-                        {(["auto", "imdb", "tmdb"] as IdPreference[]).map((pref) => {
-                          const isSelected = (server.idPreference || "auto") === pref;
-                          return (
-                            <button
-                              key={pref}
-                              onClick={() => handleUpdateServer(server.id, { idPreference: pref })}
-                              className={`px-2 py-1 rounded-lg font-bold uppercase transition ${
-                                isSelected ? "bg-indigo-600 text-white" : "text-zinc-400 hover:text-white"
-                              }`}
-                            >
-                              {pref}
-                            </button>
-                          );
-                        })}
+                        {/* ID Preference Selector for {id} */}
+                        <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded-xl border border-zinc-800 text-[10px]">
+                          <span className="text-zinc-500 px-1 font-medium">&#123;id&#125; Format:</span>
+                          {(["auto", "imdb", "tmdb"] as IdPreference[]).map((pref) => {
+                            const isSelected = (server.idPreference || "auto") === pref;
+                            return (
+                              <button
+                                key={pref}
+                                onClick={() => handleUpdateServer(server.id, { idPreference: pref })}
+                                className={`px-2 py-0.5 rounded-lg font-bold uppercase transition ${
+                                  isSelected ? "bg-indigo-600 text-white" : "text-zinc-400 hover:text-white"
+                                }`}
+                              >
+                                {pref}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
 
-                      {server.endpointTemplate && (
-                        <button
-                          onClick={() => {
-                            setActiveServerId(server.id);
-                            setPlayerMode("embed");
-                          }}
-                          className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold transition shrink-0 ${
-                            activeServerId === server.id && playerMode === "embed"
-                              ? "bg-indigo-600 text-white"
-                              : "bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white"
-                          }`}
-                        >
-                          {activeServerId === server.id && playerMode === "embed" ? "Active" : "Select"}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => {
+                          setActiveServerId(server.id);
+                          setPlayerMode("embed");
+                        }}
+                        className={`px-3 py-1 rounded-xl text-[11px] font-semibold transition ${
+                          activeServerId === server.id && playerMode === "embed"
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                            : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                        }`}
+                      >
+                        {activeServerId === server.id && playerMode === "embed" ? "Active Server" : "Make Active"}
+                      </button>
                     </div>
 
-                    {/* Live Preview URL */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* Movie Template */}
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-indigo-300 flex items-center gap-1">
+                          🎬 Movie URL Template:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="https://provider.com/embed/movie/{id}?autoPlay=true"
+                          value={server.movieTemplate ?? server.endpointTemplate ?? ""}
+                          onChange={(e) => handleUpdateServer(server.id, { movieTemplate: e.target.value })}
+                          className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500 font-mono"
+                        />
+                      </div>
+
+                      {/* TV Series Template */}
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-purple-300 flex items-center gap-1">
+                          📺 TV Series URL Template:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="https://provider.com/embed/tv/{id}/{season}/{episode}?autoPlay=true"
+                          value={server.tvTemplate ?? ""}
+                          onChange={(e) => handleUpdateServer(server.id, { tvTemplate: e.target.value })}
+                          className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-purple-500 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Preview for Current Title */}
                     {previewUrl && (
-                      <div className="text-[11px] text-zinc-400 truncate flex items-center gap-1 pl-1">
-                        <span className="text-zinc-500 shrink-0">Output URL:</span>
+                      <div className="text-[11px] text-zinc-400 truncate flex items-center gap-1.5 pt-1 border-t border-zinc-900">
+                        <span className="text-zinc-500 shrink-0 font-medium">
+                          Active URL ({isTvShow ? "Series" : "Movie"}):
+                        </span>
                         <code className="text-emerald-400 truncate font-mono">{previewUrl}</code>
                       </div>
                     )}
@@ -345,7 +377,13 @@ function VideoPlayer() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 pt-2 text-[11px] text-zinc-500 border-t border-zinc-800">
-              <span>Current Title Parameters:</span>
+              <span>Detected Media Type:</span>
+              <span className={`px-2 py-0.5 rounded font-bold uppercase ${
+                isTvShow ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+              }`}>
+                {isTvShow ? "TV Series" : "Movie"}
+              </span>
+
               {activeImdbId && (
                 <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                   IMDb: {activeImdbId}
@@ -382,7 +420,7 @@ function VideoPlayer() {
 
             {servers.map((s) => {
               const isSelected = playerMode === "embed" && activeServerId === s.id;
-              const hasUrl = Boolean(s.endpointTemplate?.trim());
+              const hasUrl = Boolean(resolveServerTemplate(s, Boolean(isTvShow)));
               return (
                 <button
                   key={s.id}
@@ -499,10 +537,10 @@ function VideoPlayer() {
               </div>
 
               <h2 className="text-xl font-bold text-white mb-2">
-                {activeServer.name} Endpoint Not Set
+                {isTvShow ? "Series" : "Movie"} Endpoint Not Set for {activeServer.name}
               </h2>
               <p className="text-xs text-zinc-400 mb-5 max-w-md">
-                Configure your endpoint template for <strong className="text-zinc-200">{activeServer.name}</strong> to watch{" "}
+                Configure your {isTvShow ? "TV Series template" : "Movie template"} for <strong className="text-zinc-200">{activeServer.name}</strong> to watch{" "}
                 <span className="text-white font-medium">"{activeTitle}"</span>
                 {isTvShow ? ` (Season ${selectedSeason}, Episode ${selectedEpisode})` : ""}.
               </p>
@@ -554,7 +592,11 @@ function VideoPlayer() {
         {movieMeta && (
           <div className="space-y-6 pb-12 max-w-4xl">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="px-3 py-1 rounded-xl text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-wide">
+              <span className={`px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wide ${
+                isTvShow
+                  ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                  : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+              }`}>
                 {isTvShow ? "TV Series" : "Movie"}
               </span>
 

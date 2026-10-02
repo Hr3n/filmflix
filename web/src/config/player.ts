@@ -1,19 +1,18 @@
 /**
  * Multi-Server Custom Player & Embed Configuration
  * 
- * Supports Movies and TV Series with customizable endpoint templates.
+ * Supports distinct endpoint templates for Movies and TV Series with auto-detection.
  * 
  * Available URL Tokens:
- *  - {id}          : Automatically replaced by the movie identifier (IMDb or TMDb based on server preference)
- *  - {imdb}        : Strictly replaced by IMDb ID (with 'tt' prefix, e.g. tt6920084)
- *  - {tmdb}        : Strictly replaced by TMDb numeric ID (e.g. 460458)
+ *  - {id}          : Automatically replaced by the primary ID (IMDb or TMDb based on server preference)
+ *  - {imdb}        : Strictly replaced by IMDb ID (with 'tt' prefix, e.g. tt0903747)
+ *  - {tmdb}        : Strictly replaced by TMDb numeric ID (e.g. 1396)
  *  - {season} / {s}: Season number for TV series (defaults to 1)
  *  - {episode} / {e}: Episode number for TV series (defaults to 1)
  * 
  * Example Templates:
- *  - https://provider.com/embed/{id}?autoPlay=true
- *  - https://provider.com/embed/movie/{id}
- *  - https://provider.com/embed/tv/{id}/{season}/{episode}
+ *  - Movie:  https://provider.com/embed/movie/{id}?autoPlay=true
+ *  - Series: https://provider.com/embed/tv/{id}/{season}/{episode}?autoPlay=true
  */
 
 export type IdPreference = "auto" | "imdb" | "tmdb";
@@ -21,8 +20,10 @@ export type IdPreference = "auto" | "imdb" | "tmdb";
 export interface StreamServer {
   id: string;
   name: string;
-  endpointTemplate: string;
-  idPreference?: IdPreference; // Which ID format {id} resolves to
+  endpointTemplate: string; // General / fallback template
+  movieTemplate?: string;   // Dedicated Movie template
+  tvTemplate?: string;      // Dedicated TV Series template
+  idPreference?: IdPreference;
 }
 
 export const INITIAL_SERVERS: StreamServer[] = [
@@ -30,21 +31,37 @@ export const INITIAL_SERVERS: StreamServer[] = [
     id: "server-1",
     name: "Server 1",
     endpointTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT || "",
+    movieTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_MOVIE || process.env.NEXT_PUBLIC_STREAM_ENDPOINT || "",
+    tvTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_TV || "",
     idPreference: "auto",
   },
   {
     id: "server-2",
     name: "Server 2",
     endpointTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2 || "",
+    movieTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2_MOVIE || process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2 || "",
+    tvTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2_TV || "",
     idPreference: "auto",
   },
   {
     id: "server-3",
     name: "Server 3",
     endpointTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3 || "",
+    movieTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3_MOVIE || process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3 || "",
+    tvTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3_TV || "",
     idPreference: "auto",
   },
 ];
+
+/**
+ * Resolves the appropriate template based on whether the content is a TV Series or a Movie.
+ */
+export function resolveServerTemplate(server: StreamServer, isTv: boolean): string {
+  if (isTv) {
+    return server.tvTemplate?.trim() || server.endpointTemplate?.trim() || "";
+  }
+  return server.movieTemplate?.trim() || server.endpointTemplate?.trim() || "";
+}
 
 export function buildEmbedUrl(
   endpointTemplate: string,
