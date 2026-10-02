@@ -57,37 +57,23 @@ function VideoPlayer() {
   // Anti-Popup / Sandbox Shield state (defaults to true for maximum protection)
   const [blockPopups, setBlockPopups] = useState<boolean>(true);
 
-  // Load preferences from localStorage
+  // Always use code/env defaults; purge any legacy localStorage saved servers
   useEffect(() => {
-    const savedServers = localStorage.getItem("filmflix_stream_servers");
-    if (savedServers) {
-      try {
-        const parsed = JSON.parse(savedServers);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const merged = INITIAL_SERVERS.map((defServer) => {
-            const saved = parsed.find((p: any) => p.id === defServer.id);
-            if (!saved) return defServer;
-            return {
-              ...defServer,
-              ...saved,
-              movieTemplate: saved.movieTemplate || saved.endpointTemplate || defServer.movieTemplate,
-              tvTemplate: saved.tvTemplate || defServer.tvTemplate,
-              endpointTemplate: saved.endpointTemplate || defServer.endpointTemplate,
-            };
-          });
-          setServers(merged);
-          setActiveServerId(merged[0]?.id || "server-1");
-        }
-      } catch (e) {
-        console.error("Failed to parse saved servers", e);
-      }
-    }
+    try {
+      localStorage.removeItem("filmflix_stream_servers");
+    } catch {}
+    setServers(INITIAL_SERVERS);
 
     const savedShield = localStorage.getItem("filmflix_block_popups");
     if (savedShield !== null) {
       setBlockPopups(savedShield === "true");
     }
   }, []);
+
+  // When switching movies, automatically reset servers to code-defined templates
+  useEffect(() => {
+    setServers(INITIAL_SERVERS);
+  }, [rawId, imdbIdParam, tmdbIdParam, titleParam]);
 
   const handleToggleShield = () => {
     const nextVal = !blockPopups;
@@ -158,7 +144,14 @@ function VideoPlayer() {
   const handleUpdateServer = (id: string, updates: Partial<StreamServer>) => {
     const updated = servers.map((s) => (s.id === id ? { ...s, ...updates } : s));
     setServers(updated);
-    localStorage.setItem("filmflix_stream_servers", JSON.stringify(updated));
+    // Endpoints are not persisted to localStorage so code remains the permanent source of truth
+  };
+
+  const handleResetToDefaults = () => {
+    try {
+      localStorage.removeItem("filmflix_stream_servers");
+    } catch {}
+    setServers(INITIAL_SERVERS);
   };
 
   return (
@@ -236,12 +229,24 @@ function VideoPlayer() {
                   The player automatically detects whether a title is a <strong>Movie</strong> or <strong>TV Series</strong> and picks the matching endpoint template.
                 </p>
               </div>
-              <button
-                onClick={() => setShowConfig(false)}
-                className="text-xs text-zinc-400 hover:text-white px-2 py-1 rounded bg-zinc-800"
-              >
-                Done ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleResetToDefaults}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-700 hover:border-indigo-500/50 transition flex items-center gap-1"
+                  title="Reset all endpoints to code defaults"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Reset to Code
+                </button>
+                <button
+                  onClick={() => setShowConfig(false)}
+                  className="text-xs text-zinc-400 hover:text-white px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-700 hover:border-zinc-600 transition"
+                >
+                  Done ✕
+                </button>
+              </div>
             </div>
 
             {/* Anti-Popup / Sandbox Shield Setting Card */}
