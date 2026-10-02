@@ -1,27 +1,16 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 
 export async function GET() {
   const tmdbKey = process.env.TMDB_API_KEY;
 
   if (!tmdbKey) {
-    // Return fallback catalog movies if no TMDB key is configured yet
-    try {
-      const catalogPath = path.join(process.cwd(), "public", "catalog.json");
-      if (fs.existsSync(catalogPath)) {
-        const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf-8"));
-        return NextResponse.json({
-          hasApiKey: false,
-          trending: catalog.map((m: any) => ({ ...m, media_type: "movie" })),
-          movies: catalog,
-          tvShows: [],
-        });
-      }
-    } catch (err) {
-      console.error("Catalog fallback read error:", err);
-    }
-    return NextResponse.json({ hasApiKey: false, trending: [], movies: [], tvShows: [] });
+    return NextResponse.json({
+      hasApiKey: false,
+      trending: [],
+      movies: [],
+      tvShows: [],
+      error: "TMDB_API_KEY is not configured.",
+    });
   }
 
   try {

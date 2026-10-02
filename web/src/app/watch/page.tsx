@@ -99,15 +99,7 @@ function VideoPlayer() {
         if (res.ok) {
           return res.json();
         }
-        const catalogRes = await fetch("/catalog.json");
-        const catalog = await catalogRes.json();
-        const found = catalog.find(
-          (m: any) =>
-            m.imdb_id === lookupId ||
-            String(m.tmdb_id) === String(lookupId) ||
-            m.title.toLowerCase() === titleParam.toLowerCase()
-        );
-        return found || null;
+        return null;
       })
       .then((data) => {
         if (data) {
@@ -115,7 +107,7 @@ function VideoPlayer() {
           const activeServer = servers.find((s) => s.id === activeServerId);
           const isTv = data.media_type === "tv" || mediaTypeParam === "tv" || (data.seasons && data.seasons.length > 0);
           const activeTemplate = activeServer ? resolveServerTemplate(activeServer, isTv) : "";
-          if (data.extracted_links?.[0] && !activeTemplate) {
+          if (directVideoUrl && !activeTemplate) {
             setPlayerMode("direct");
           }
         }

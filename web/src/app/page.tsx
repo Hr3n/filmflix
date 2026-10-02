@@ -21,7 +21,6 @@ export interface MediaItem {
 }
 
 export default function Home() {
-  const [catalog, setCatalog] = useState<MediaItem[]>([]);
   const [trendingMovies, setTrendingMovies] = useState<MediaItem[]>([]);
   const [trendingTv, setTrendingTv] = useState<MediaItem[]>([]);
   const [hasApiKey, setHasApiKey] = useState(false);
@@ -34,13 +33,8 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState<MediaItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Load catalog and trending items
+  // Load trending items
   useEffect(() => {
-    fetch("/catalog.json")
-      .then((res) => res.json())
-      .then((data: MediaItem[]) => setCatalog(data.map((m) => ({ ...m, media_type: "movie" }))))
-      .catch((err) => console.error("Failed to load catalog:", err));
-
     fetch("/api/trending")
       .then((res) => res.json())
       .then((data) => {
@@ -84,7 +78,7 @@ export default function Home() {
 
   // Combine items for homepage browsing
   const allMediaItems = useMemo(() => {
-    const combined = [...catalog, ...trendingMovies, ...trendingTv];
+    const combined = [...trendingMovies, ...trendingTv];
     const seen = new Set<string>();
     return combined.filter((item) => {
       const key = `${item.media_type}-${item.tmdb_id || item.imdb_id || item.title}`;
@@ -92,7 +86,7 @@ export default function Home() {
       seen.add(key);
       return true;
     });
-  }, [catalog, trendingMovies, trendingTv]);
+  }, [trendingMovies, trendingTv]);
 
   // Filter based on search, media type (Movie / TV), and category
   const filteredItems = useMemo(() => {
@@ -121,15 +115,13 @@ export default function Home() {
 
   // Spotlight Hero item
   const featuredItem = useMemo(() => {
-    return allMediaItems.find((m) => m.backdrop && m.poster) || catalog[0] || null;
-  }, [allMediaItems, catalog]);
+    return allMediaItems.find((m) => m.backdrop && m.poster) || allMediaItems[0] || null;
+  }, [allMediaItems]);
 
   const isSearchActive = searchQuery.trim().length > 0;
 
   const renderMediaCard = (item: MediaItem, index: number) => {
     const isTv = item.media_type === "tv";
-    const videoUrl = item.extracted_links?.[0];
-    const hasDirectPlay = Boolean(videoUrl);
     const mediaIdParam = item.imdb_id || (item.tmdb_id ? String(item.tmdb_id) : "") || item.title;
 
     return (
@@ -178,18 +170,13 @@ export default function Home() {
           </div>
 
           {/* Bottom Indicators */}
-          <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
-            {hasDirectPlay ? (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/90 text-white backdrop-blur-md shadow-md">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
-                Direct Play
-              </span>
-            ) : item.imdb_id ? (
+          {item.imdb_id ? (
+            <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
               <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-medium bg-zinc-900/90 text-emerald-400 backdrop-blur-md border border-emerald-500/30 shadow-md">
                 {item.imdb_id}
               </span>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Card Details */}
@@ -213,9 +200,9 @@ export default function Home() {
             <Link
               href={`/watch?id=${encodeURIComponent(mediaIdParam)}&title=${encodeURIComponent(item.title)}${
                 isTv ? "&type=tv" : ""
-              }${videoUrl ? `&url=${encodeURIComponent(videoUrl)}` : ""}${
-                item.imdb_id ? `&imdb_id=${encodeURIComponent(item.imdb_id)}` : ""
-              }${item.tmdb_id ? `&tmdb_id=${item.tmdb_id}` : ""}`}
+              }${item.imdb_id ? `&imdb_id=${encodeURIComponent(item.imdb_id)}` : ""}${
+                item.tmdb_id ? `&tmdb_id=${item.tmdb_id}` : ""
+              }`}
               className="flex-1 text-center bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-1.5 rounded-lg transition-colors text-xs shadow-md shadow-indigo-600/20"
             >
               Watch Now
@@ -398,10 +385,8 @@ export default function Home() {
                     featuredItem.imdb_id || (featuredItem.tmdb_id ? String(featuredItem.tmdb_id) : "") || featuredItem.title
                   )}&title=${encodeURIComponent(featuredItem.title)}${
                     featuredItem.media_type === "tv" ? "&type=tv" : ""
-                  }${
-                    featuredItem.extracted_links?.[0]
-                      ? `&url=${encodeURIComponent(featuredItem.extracted_links[0])}`
-                      : ""
+                  }${featuredItem.imdb_id ? `&imdb_id=${encodeURIComponent(featuredItem.imdb_id)}` : ""}${
+                    featuredItem.tmdb_id ? `&tmdb_id=${featuredItem.tmdb_id}` : ""
                   }`}
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-600/30 hover:scale-105 active:scale-95"
                 >
@@ -437,7 +422,7 @@ export default function Home() {
                   ? "Trending TV Series"
                   : mediaFilter === "movie"
                   ? "Popular Movies"
-                  : "Catalog & Trending Releases"}
+                  : "Trending Movies & TV Series"}
               </h3>
             </div>
           </div>
@@ -533,10 +518,6 @@ export default function Home() {
                         activeModalItem.title
                     )}&title=${encodeURIComponent(activeModalItem.title)}${
                       activeModalItem.media_type === "tv" ? "&type=tv" : ""
-                    }${
-                      activeModalItem.extracted_links?.[0]
-                        ? `&url=${encodeURIComponent(activeModalItem.extracted_links[0])}`
-                        : ""
                     }${activeModalItem.imdb_id ? `&imdb_id=${encodeURIComponent(activeModalItem.imdb_id)}` : ""}${
                       activeModalItem.tmdb_id ? `&tmdb_id=${activeModalItem.tmdb_id}` : ""
                     }`}
@@ -547,17 +528,6 @@ export default function Home() {
                     </svg>
                     Play in Cinema Player
                   </Link>
-
-                  {activeModalItem.extracted_links?.[0] && (
-                    <Link
-                      href={`/watch?title=${encodeURIComponent(activeModalItem.title)}&url=${encodeURIComponent(
-                        activeModalItem.extracted_links[0]
-                      )}`}
-                      className="px-5 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs border border-zinc-700 flex items-center justify-center gap-2 transition"
-                    >
-                      Play Archive Direct MP4
-                    </Link>
-                  )}
                 </div>
 
                 {/* Endpoint Parameters Box */}

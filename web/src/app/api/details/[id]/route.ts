@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 
 export async function GET(
   request: Request,
@@ -14,30 +12,6 @@ export async function GET(
     return NextResponse.json({ error: "Missing title ID" }, { status: 400 });
   }
 
-  // 1. Check local catalog first
-  try {
-    const catalogPath = path.join(process.cwd(), "public", "catalog.json");
-    if (fs.existsSync(catalogPath)) {
-      const catalogData = JSON.parse(fs.readFileSync(catalogPath, "utf-8"));
-      const found = catalogData.find(
-        (m: any) =>
-          m.imdb_id === id ||
-          String(m.tmdb_id) === String(id) ||
-          m.title.toLowerCase() === id.toLowerCase()
-      );
-
-      if (found) {
-        return NextResponse.json({
-          ...found,
-          media_type: "movie",
-        });
-      }
-    }
-  } catch (err) {
-    console.error("Error reading local catalog in details route:", err);
-  }
-
-  // 2. Query TMDb if API key is provided
   const tmdbKey = process.env.TMDB_API_KEY;
   if (!tmdbKey) {
     return NextResponse.json(
