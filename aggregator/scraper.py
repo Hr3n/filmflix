@@ -39,12 +39,33 @@ def scrape_video_links(url):
             video_links.append(href)
 
     # Method 3: Regex search for video URLs hidden in javascript or raw text
-    # (Many file hosts embed their links inside script tags)
     text_urls = re.findall(r'(https?://[^\s\'"]+\.(?:mp4|m3u8|mkv))', response.text, re.IGNORECASE)
     video_links.extend(text_urls)
 
-    # Deduplicate the list
-    return list(set(video_links))
+    def is_safe_url(url):
+        """Validates that a URL is safe and points to a media file."""
+        if not url:
+            return False
+        
+        # Must use secure HTTP or HTTPs, block javascript:, data:, etc.
+        if not url.startswith(('http://', 'https://')):
+            return False
+            
+        # Optional: Ensure it has a valid media extension
+        # If your sources hide the extension, you might need to relax this rule
+        safe_extensions = ('.mp4', '.m3u8', '.mkv', '.webm', '.avi')
+        if not any(url.lower().split('?')[0].endswith(ext) for ext in safe_extensions):
+            return False
+            
+        return True
+
+    # Deduplicate, sanitize, and filter the list
+    safe_links = []
+    for link in set(video_links):
+        if is_safe_url(link):
+            safe_links.append(link)
+            
+    return safe_links
 
 if __name__ == "__main__":
     # Example usage: Testing the scraper on a legal public domain movie page
