@@ -2,7 +2,7 @@
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense, useEffect, useState, useMemo } from "react";
-import { INITIAL_SERVERS, StreamServer, buildEmbedUrl } from "@/config/player";
+import { INITIAL_SERVERS, StreamServer, IdPreference, buildEmbedUrl } from "@/config/player";
 
 interface SeasonInfo {
   season_number: number;
@@ -130,13 +130,12 @@ function VideoPlayer() {
         tmdb_id: activeTmdbId,
         season: isTvShow ? selectedSeason : null,
         episode: isTvShow ? selectedEpisode : null,
+        idPreference: activeServer.idPreference || "auto",
       })
     : null;
 
-  const handleUpdateServer = (id: string, newTemplate: string) => {
-    const updated = servers.map((s) =>
-      s.id === id ? { ...s, endpointTemplate: newTemplate } : s
-    );
+  const handleUpdateServer = (id: string, updates: Partial<StreamServer>) => {
+    const updated = servers.map((s) => (s.id === id ? { ...s, ...updates } : s));
     setServers(updated);
     localStorage.setItem("filmflix_stream_servers", JSON.stringify(updated));
   };
@@ -192,10 +191,10 @@ function VideoPlayer() {
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                  Multi-Provider Server Templates
+                  Multi-Provider Server Templates & URL Rules
                 </h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Supported tokens: <code className="text-indigo-400">&#123;id&#125;</code>, <code className="text-indigo-400">&#123;imdb&#125;</code>, <code className="text-indigo-400">&#123;tmdb&#125;</code>, <code className="text-indigo-400">&#123;season&#125;</code>, <code className="text-indigo-400">&#123;episode&#125;</code>.
+                  Supported tokens: <code className="text-indigo-400">&#123;id&#125;</code> (IMDb or TMDb), <code className="text-indigo-400">&#123;imdb&#125;</code>, <code className="text-indigo-400">&#123;tmdb&#125;</code>, <code className="text-indigo-400">&#123;season&#125;</code>, <code className="text-indigo-400">&#123;episode&#125;</code>.
                 </p>
               </div>
               <button
@@ -206,36 +205,81 @@ function VideoPlayer() {
               </button>
             </div>
 
-            <div className="space-y-3">
-              {servers.map((server, idx) => (
-                <div key={server.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                  <span className="w-20 text-xs font-semibold text-zinc-300 shrink-0">
-                    {server.name}:
-                  </span>
-                  <input
-                    type="text"
-                    placeholder={`https://provider-${idx + 1}.example.com/embed/{id}${isTvShow ? '/{season}/{episode}' : ''}`}
-                    value={server.endpointTemplate}
-                    onChange={(e) => handleUpdateServer(server.id, e.target.value)}
-                    className="flex-1 w-full bg-zinc-950 border border-zinc-700/80 rounded-xl px-3.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
-                  />
-                  {server.endpointTemplate && (
-                    <button
-                      onClick={() => {
-                        setActiveServerId(server.id);
-                        setPlayerMode("embed");
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white text-[11px] font-semibold transition"
-                    >
-                      Make Active
-                    </button>
-                  )}
-                </div>
-              ))}
+            <div className="space-y-4">
+              {servers.map((server, idx) => {
+                const previewUrl = buildEmbedUrl(server.endpointTemplate, {
+                  id: rawId || activeImdbId || (activeTmdbId ? String(activeTmdbId) : null),
+                  imdb_id: activeImdbId,
+                  tmdb_id: activeTmdbId,
+                  season: isTvShow ? selectedSeason : null,
+                  episode: isTvShow ? selectedEpisode : null,
+                  idPreference: server.idPreference || "auto",
+                });
+
+                return (
+                  <div key={server.id} className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 space-y-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                      <span className="w-20 text-xs font-bold text-zinc-200 shrink-0">
+                        {server.name}:
+                      </span>
+                      <input
+                        type="text"
+                        placeholder={`https://provider-${idx + 1}.example.com/embed/{id}?autoPlay=true`}
+                        value={server.endpointTemplate}
+                        onChange={(e) => handleUpdateServer(server.id, { endpointTemplate: e.target.value })}
+                        className="flex-1 w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-3.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500 font-mono"
+                      />
+
+                      {/* ID Preference Selector for {id} */}
+                      <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded-xl border border-zinc-800 text-[10px] shrink-0">
+                        <span className="text-zinc-500 px-1 font-medium">&#123;id&#125;:</span>
+                        {(["auto", "imdb", "tmdb"] as IdPreference[]).map((pref) => {
+                          const isSelected = (server.idPreference || "auto") === pref;
+                          return (
+                            <button
+                              key={pref}
+                              onClick={() => handleUpdateServer(server.id, { idPreference: pref })}
+                              className={`px-2 py-1 rounded-lg font-bold uppercase transition ${
+                                isSelected ? "bg-indigo-600 text-white" : "text-zinc-400 hover:text-white"
+                              }`}
+                            >
+                              {pref}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {server.endpointTemplate && (
+                        <button
+                          onClick={() => {
+                            setActiveServerId(server.id);
+                            setPlayerMode("embed");
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold transition shrink-0 ${
+                            activeServerId === server.id && playerMode === "embed"
+                              ? "bg-indigo-600 text-white"
+                              : "bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white"
+                          }`}
+                        >
+                          {activeServerId === server.id && playerMode === "embed" ? "Active" : "Select"}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Live Preview URL */}
+                    {previewUrl && (
+                      <div className="text-[11px] text-zinc-400 truncate flex items-center gap-1 pl-1">
+                        <span className="text-zinc-500 shrink-0">Output URL:</span>
+                        <code className="text-emerald-400 truncate font-mono">{previewUrl}</code>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex flex-wrap items-center gap-3 pt-2 text-[11px] text-zinc-500 border-t border-zinc-800">
-              <span>Active Tokens:</span>
+              <span>Current Title Parameters:</span>
               {activeImdbId && (
                 <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                   IMDb: {activeImdbId}
@@ -395,7 +439,7 @@ function VideoPlayer() {
               <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
                 {activeImdbId && (
                   <span className="px-3 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300">
-                    &#123;id&#125; / &#123;imdb&#125;: <strong className="text-emerald-400">{activeImdbId}</strong>
+                    &#123;imdb&#125;: <strong className="text-emerald-400">{activeImdbId}</strong>
                   </span>
                 )}
                 {activeTmdbId && (
