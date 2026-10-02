@@ -64,8 +64,19 @@ function VideoPlayer() {
       try {
         const parsed = JSON.parse(savedServers);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setServers(parsed);
-          setActiveServerId(parsed[0].id);
+          const merged = INITIAL_SERVERS.map((defServer) => {
+            const saved = parsed.find((p: any) => p.id === defServer.id);
+            if (!saved) return defServer;
+            return {
+              ...defServer,
+              ...saved,
+              movieTemplate: saved.movieTemplate || saved.endpointTemplate || defServer.movieTemplate,
+              tvTemplate: saved.tvTemplate || defServer.tvTemplate,
+              endpointTemplate: saved.endpointTemplate || defServer.endpointTemplate,
+            };
+          });
+          setServers(merged);
+          setActiveServerId(merged[0]?.id || "server-1");
         }
       } catch (e) {
         console.error("Failed to parse saved servers", e);

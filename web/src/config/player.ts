@@ -30,25 +30,42 @@ export const INITIAL_SERVERS: StreamServer[] = [
   {
     id: "server-1",
     name: "Server 1",
-    endpointTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT || "",
-    movieTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_MOVIE || process.env.NEXT_PUBLIC_STREAM_ENDPOINT || "",
-    tvTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_TV || "",
+    endpointTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT || "https://111movies.net/movie/{id}",
+    movieTemplate:
+      process.env.NEXT_PUBLIC_STREAM_ENDPOINT_MOVIE ||
+      process.env.NEXT_PUBLIC_STREAM_ENDPOINT ||
+      "https://111movies.net/movie/{id}",
+    tvTemplate:
+      process.env.NEXT_PUBLIC_STREAM_ENDPOINT_TV ||
+      "https://111movies.net/tv/{id}/{season}/{episode}",
     idPreference: "auto",
   },
   {
     id: "server-2",
     name: "Server 2",
-    endpointTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2 || "",
-    movieTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2_MOVIE || process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2 || "",
-    tvTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2_TV || "",
+    endpointTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2 || "https://www.2embed.cc/embed/{id}",
+    movieTemplate:
+      process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2_MOVIE ||
+      process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2 ||
+      "https://www.2embed.cc/embed/{id}",
+    tvTemplate:
+      process.env.NEXT_PUBLIC_STREAM_ENDPOINT_2_TV ||
+      "https://www.2embed.cc/embedtv/{season}&s=1&e={episode}",
     idPreference: "auto",
   },
   {
     id: "server-3",
     name: "Server 3",
-    endpointTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3 || "",
-    movieTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3_MOVIE || process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3 || "",
-    tvTemplate: process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3_TV || "",
+    endpointTemplate:
+      process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3 ||
+      "https://vidfast.vc/movie/{id}?autoPlay=true",
+    movieTemplate:
+      process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3_MOVIE ||
+      process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3 ||
+      "https://vidfast.vc/movie/{id}?autoPlay=true",
+    tvTemplate:
+      process.env.NEXT_PUBLIC_STREAM_ENDPOINT_3_TV ||
+      "https://vidfast.vc/tv/{id}/{season}/{episode}?autoPlay=true",
     idPreference: "auto",
   },
 ];
@@ -98,6 +115,9 @@ export function buildEmbedUrl(
   if (!primaryId) return null;
 
   let url = endpointTemplate.trim();
+  if (url && !url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("//")) {
+    url = `https://${url}`;
+  }
 
   // Replace {id} token (case-insensitive)
   url = url.replace(/\{id\}/gi, encodeURIComponent(String(primaryId)));
