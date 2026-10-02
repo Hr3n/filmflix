@@ -54,12 +54,15 @@ function VideoPlayer() {
   const [playerMode, setPlayerMode] = useState<"embed" | "direct">("embed");
   const [showConfig, setShowConfig] = useState(false);
 
-  // Load servers from localStorage if saved
+  // Anti-Popup / Sandbox Shield state (defaults to true for maximum protection)
+  const [blockPopups, setBlockPopups] = useState<boolean>(true);
+
+  // Load preferences from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem("filmflix_stream_servers");
-    if (saved) {
+    const savedServers = localStorage.getItem("filmflix_stream_servers");
+    if (savedServers) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(savedServers);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setServers(parsed);
           setActiveServerId(parsed[0].id);
@@ -68,7 +71,18 @@ function VideoPlayer() {
         console.error("Failed to parse saved servers", e);
       }
     }
+
+    const savedShield = localStorage.getItem("filmflix_block_popups");
+    if (savedShield !== null) {
+      setBlockPopups(savedShield === "true");
+    }
   }, []);
+
+  const handleToggleShield = () => {
+    const nextVal = !blockPopups;
+    setBlockPopups(nextVal);
+    localStorage.setItem("filmflix_block_popups", String(nextVal));
+  };
 
   // Fetch movie or TV details
   useEffect(() => {
@@ -169,6 +183,22 @@ function VideoPlayer() {
 
         {/* Top Controls */}
         <div className="flex items-center gap-2">
+          {/* Anti-Popup Shield Toggle Button */}
+          <button
+            onClick={handleToggleShield}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border ${
+              blockPopups
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 shadow-sm shadow-emerald-500/10"
+                : "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
+            }`}
+            title={blockPopups ? "Anti-Popup Shield: Active (Popups and redirects blocked)" : "Compatibility Mode (Popups allowed)"}
+          >
+            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span className="hidden sm:inline">{blockPopups ? "Popup Shield: ON" : "Shield: OFF"}</span>
+          </button>
+
           <button
             onClick={() => setShowConfig(!showConfig)}
             className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-300 flex items-center gap-1.5 transition"
@@ -183,7 +213,7 @@ function VideoPlayer() {
         </div>
       </header>
 
-      {/* Multi-Server Configuration Drawer */}
+      {/* Multi-Server & Shield Configuration Drawer */}
       {showConfig && (
         <div className="bg-zinc-900/95 border-b border-zinc-800 p-5 md:px-8 transition-all animate-in slide-in-from-top">
           <div className="max-w-4xl mx-auto space-y-4">
@@ -191,7 +221,7 @@ function VideoPlayer() {
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                  Multi-Provider Server Templates & URL Rules
+                  Multi-Provider Server Templates & Protections
                 </h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
                   Supported tokens: <code className="text-indigo-400">&#123;id&#125;</code> (IMDb or TMDb), <code className="text-indigo-400">&#123;imdb&#125;</code>, <code className="text-indigo-400">&#123;tmdb&#125;</code>, <code className="text-indigo-400">&#123;season&#125;</code>, <code className="text-indigo-400">&#123;episode&#125;</code>.
@@ -205,6 +235,42 @@ function VideoPlayer() {
               </button>
             </div>
 
+            {/* Anti-Popup / Sandbox Shield Setting Card */}
+            <div className="p-3.5 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    Built-in Anti-Popup & Redirect Shield
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    blockPopups
+                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                      : "bg-zinc-800 text-zinc-400"
+                  }`}>
+                    {blockPopups ? "ENABLED" : "DISABLED"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-400 max-w-xl">
+                  Applies HTML5 sandboxing to strictly block new tab popups, background pop-unders, and URL redirects when interacting with the video player. Turn OFF if a specific server fails to initialize.
+                </p>
+              </div>
+
+              <button
+                onClick={handleToggleShield}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                  blockPopups
+                    ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20"
+                    : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                }`}
+              >
+                {blockPopups ? "Shield: Active" : "Enable Shield"}
+              </button>
+            </div>
+
+            {/* Server Templates */}
             <div className="space-y-4">
               {servers.map((server, idx) => {
                 const previewUrl = buildEmbedUrl(server.endpointTemplate, {
@@ -412,11 +478,16 @@ function VideoPlayer() {
             </video>
           ) : embedUrl ? (
             <iframe
-              key={`${activeServerId}-${selectedSeason}-${selectedEpisode}-${embedUrl}`}
+              key={`${activeServerId}-${selectedSeason}-${selectedEpisode}-${embedUrl}-${blockPopups}`}
               src={embedUrl}
               className="w-full h-full border-0"
               allowFullScreen
               allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              sandbox={
+                blockPopups
+                  ? "allow-scripts allow-same-origin allow-forms allow-presentation"
+                  : undefined
+              }
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-zinc-950">
