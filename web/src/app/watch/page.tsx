@@ -57,10 +57,6 @@ function VideoPlayer() {
   // Anti-Popup / Sandbox Shield state (defaults to true for maximum protection)
   const [blockPopups, setBlockPopups] = useState<boolean>(true);
 
-  // Overlay Click-Shield state (protects against initial clickjacking/popups)
-  const [isOverlayActive, setIsOverlayActive] = useState<boolean>(true);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
   // Always use code/env defaults; purge any legacy localStorage saved servers
   useEffect(() => {
     try {
@@ -74,16 +70,10 @@ function VideoPlayer() {
     }
   }, []);
 
-  // When switching movies, automatically reset servers to code-defined templates and re-arm click shield
+  // When switching movies, automatically reset servers to code-defined templates
   useEffect(() => {
     setServers(INITIAL_SERVERS);
-    setIsOverlayActive(true);
   }, [rawId, imdbIdParam, tmdbIdParam, titleParam]);
-
-  // Re-arm click shield whenever changing servers, season, or episode
-  useEffect(() => {
-    setIsOverlayActive(true);
-  }, [activeServerId, selectedSeason, selectedEpisode]);
 
   const handleToggleShield = () => {
     const nextVal = !blockPopups;
@@ -210,20 +200,6 @@ function VideoPlayer() {
             </svg>
             <span className="hidden sm:inline">{blockPopups ? "Shield: ON" : "Shield: OFF"}</span>
           </button>
-
-          {/* Re-arm Shield Button */}
-          {!isOverlayActive && embedUrl && (
-            <button
-              onClick={() => setIsOverlayActive(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white transition"
-              title="Cover player with protective click shield"
-            >
-              <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              <span className="hidden sm:inline">Cover Player</span>
-            </button>
-          )}
 
           <button
             onClick={() => setShowConfig(!showConfig)}
@@ -547,81 +523,18 @@ function VideoPlayer() {
               Your browser does not support the video tag.
             </video>
           ) : embedUrl ? (
-            <div className="relative w-full h-full">
-              <iframe
-                ref={iframeRef}
-                key={`${activeServerId}-${selectedSeason}-${selectedEpisode}-${embedUrl}-${blockPopups}`}
-                src={embedUrl}
-                className="w-full h-full border-0"
-                allowFullScreen
-                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                sandbox={
-                  blockPopups
-                    ? "allow-scripts allow-same-origin allow-forms allow-presentation"
-                    : undefined
-                }
-              />
-
-              {/* Protective Overlay Shield */}
-              {isOverlayActive && (
-                <div
-                  className="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 text-center bg-zinc-950/90 backdrop-blur-md transition-all duration-300 animate-in fade-in"
-                  style={{
-                    backgroundImage: movieMeta?.backdrop
-                      ? `linear-gradient(to top, rgba(9, 9, 11, 0.95), rgba(9, 9, 11, 0.75)), url(${movieMeta.backdrop})`
-                      : undefined,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
-                >
-                  <div className="max-w-md space-y-4">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shadow-md">
-                      <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-                      Anti-Clickjack Overlay Shield
-                    </div>
-
-                    <div>
-                      <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
-                        {activeTitle}
-                      </h2>
-                      {isTvShow && (
-                        <p className="text-xs text-purple-300 font-medium mt-1">
-                          Season {selectedSeason} • Episode {selectedEpisode}
-                        </p>
-                      )}
-                    </div>
-
-                    <p className="text-xs text-zinc-300 leading-relaxed max-w-sm mx-auto">
-                      Click below to arm and reveal the video player. This blocks rogue click-jacking overlays and background taps.
-                    </p>
-
-                    <button
-                      onClick={() => {
-                        setIsOverlayActive(false);
-                        setTimeout(() => {
-                          iframeRef.current?.focus();
-                        }, 100);
-                      }}
-                      className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2.5 mx-auto group hover:scale-105 active:scale-95 cursor-pointer"
-                    >
-                      <svg className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                      <span>Start Watching</span>
-                    </button>
-
-                    <div className="flex items-center justify-center gap-3 text-[11px] text-zinc-400 pt-1">
-                      <span className="flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                        {activeServer.name}
-                      </span>
-                      <span>•</span>
-                      <span>{blockPopups ? "Sandbox: Active" : "Sandbox: Off"}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <iframe
+              key={`${activeServerId}-${selectedSeason}-${selectedEpisode}-${embedUrl}-${blockPopups}`}
+              src={embedUrl}
+              className="w-full h-full border-0"
+              allowFullScreen
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              sandbox={
+                blockPopups
+                  ? "allow-scripts allow-same-origin allow-forms allow-presentation"
+                  : undefined
+              }
+            />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-zinc-950">
               <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 border border-indigo-500/20">
