@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="neonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff2a6d" />
+      <stop offset="50%" stop-color="#9d4edd" />
+      <stop offset="100%" stop-color="#05d9e8" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Dark Background Circle -->
+  <rect width="100" height="100" rx="22" fill="#09090b" />
+  <rect width="96" height="96" x="2" y="2" rx="20" fill="none" stroke="url(#neonGrad)" stroke-width="1.5" opacity="0.4" />
+
+  <!-- Cinema Reel & Play Button F Emblem -->
+  <g filter="url(#glow)">
+    <!-- Film Reel Curved Arc with Perforations -->
+    <path d="M 46 16 A 34 34 0 0 0 16 50 A 34 34 0 0 0 46 84" fill="none" stroke="url(#neonGrad)" stroke-width="6.5" stroke-linecap="round" />
+    
+    <!-- Film Perforation Dots -->
+    <circle cx="25" cy="30" r="2.5" fill="#ff2a6d" />
+    <circle cx="19" cy="42" r="2.5" fill="#c74eed" />
+    <circle cx="19" cy="58" r="2.5" fill="#9d4edd" />
+    <circle cx="25" cy="70" r="2.5" fill="#05d9e8" />
+
+    <!-- Stylized Central Stem -->
+    <line x1="46" y1="16" x2="46" y2="84" stroke="url(#neonGrad)" stroke-width="6.5" stroke-linecap="round" />
+    <line x1="46" y1="50" x2="33" y2="50" stroke="url(#neonGrad)" stroke-width="5" stroke-linecap="round" />
+
+    <!-- Glowing Play Triangle -->
+    <polygon points="56,33 82,50 56,67" fill="url(#neonGrad)" stroke="#ff2a6d" stroke-width="1.5" stroke-linejoin="round" />
+  </g>
+</svg>

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #09090b;
+  --foreground: #f4f4f5;
 }
 
 @theme inline {
@@ -12,15 +12,69 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
-body {
+html, body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  scroll-behavior: smooth;
+  touch-action: manipulation;
+  overscroll-behavior-y: contain;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Safe area insets for mobile devices with notches / home indicators */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 1rem);
+}
+
+/* TV Mode & Spatial Navigation Focus Rings (10-Foot UI) */
+:focus-visible,
+[data-nav]:focus,
+[data-nav]:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 3px #6366f1, 0 0 25px 5px rgba(99, 102, 241, 0.6) !important;
+  transform: scale(1.03) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  z-index: 30 !important;
+  border-radius: inherit;
+}
+
+/* When TV 10-Foot Mode is Active */
+.tv-mode {
+  font-size: 112%;
+}
+
+.tv-mode [data-nav]:focus,
+.tv-mode [data-nav]:focus-visible {
+  box-shadow: 0 0 0 4px #818cf8, 0 0 35px 8px rgba(99, 102, 241, 0.8) !important;
+  transform: scale(1.06) !important;
+}
+
+.tv-mode .tv-enlarge {
+  font-size: 1.15em;
+}
+
+/* Card hover animation polish */
+.media-card-snap {
+  scroll-snap-align: start;
 }
